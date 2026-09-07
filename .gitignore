@@ -1,8 +1,0 @@
-shared-data.json
-shared-data.json.tmp
-node_modules/
-native-wrapper/node_modules/
-native-wrapper/dist/
-native-wrapper/android/
-native-wrapper/ios/
-.DS_Store
