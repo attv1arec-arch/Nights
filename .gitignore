@@ -1,0 +1,7 @@
+node_modules/
+walk-memory-data.json
+*.tmp
+native-wrapper/node_modules/
+native-wrapper/dist/
+native-wrapper/android/
+native-wrapper/ios/
