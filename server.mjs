@@ -112,8 +112,9 @@ function sanitizeSnapshot(data) {
   const plans = Array.isArray(data.plans) ? data.plans : [];
   const collections = Array.isArray(data.collections) ? data.collections : [];
   const voiceNotes = Array.isArray(data.voiceNotes) ? data.voiceNotes : [];
-  if (walks.length > 25000 || landmarks.length > 12000 || visits.length > 120000 || photos.length > 40000 || plans.length > 2000 || collections.length > 2000 || voiceNotes.length > 10000) throw Object.assign(new Error('Dataset too large'),{status:400});
-  return {version:9,walks,landmarks,visits,photos,plans,collections,voiceNotes};
+  const pines = Array.isArray(data.pines) ? data.pines : [];
+  if (walks.length > 25000 || landmarks.length > 12000 || visits.length > 120000 || photos.length > 40000 || plans.length > 2000 || collections.length > 2000 || voiceNotes.length > 10000 || pines.length > 50000) throw Object.assign(new Error('Dataset too large'),{status:400});
+  return {version:9,walks,landmarks,visits,photos,plans,collections,voiceNotes,pines};
 }
 function sanitizePartnerLandmark(data,existing) {
   if (!data || typeof data !== 'object' || !existing) throw Object.assign(new Error('Invalid landmark.'),{status:400});
@@ -181,7 +182,7 @@ async function handleApi(req,res,url) {
   if(req.method==='OPTIONS'){res.writeHead(204,headers);res.end();return;}
 
   try {
-    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.2',time:Date.now()},headers);
+    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.3',time:Date.now()},headers);
     if(url.pathname==='/api/auth/signup' && req.method==='POST') {
       const body=await readJson(req);
       const username=normalizeUsername(body.username), password=String(body.password||''), displayName=String(body.displayName||'').trim().slice(0,40), walkColor=safeColor(body.walkColor);
@@ -375,7 +376,7 @@ async function handleApi(req,res,url) {
     }
 
     if(url.pathname==='/api/sync/delta' && req.method==='POST'){
-      const body=await readJson(req),allowed=['walks','landmarks','visits','photos','plans','collections','voiceNotes'],updatedAt=Date.now();
+      const body=await readJson(req),allowed=['walks','landmarks','visits','photos','plans','collections','voiceNotes','pines'],updatedAt=Date.now();
       await queuedWrite(async()=>{const d=await readDB(),u=d.users[user.id],snap=sanitizeSnapshot(u.snapshot||{});u.tombstones||={};for(const name of allowed){const rows=[...(snap[name]||[])],incoming=Array.isArray(body.changes?.[name])?body.changes[name]:[],deleted=new Set(Array.isArray(body.deleted?.[name])?body.deleted[name].map(String):[]),byUid=new Map(rows.map(x=>[String(x.uid||''),x]));u.tombstones[name]||={};for(const x of incoming){if(!x||!x.uid)continue;const old=byUid.get(String(x.uid));if(!old||Number(x.updatedAt||0)>=Number(old.updatedAt||0))byUid.set(String(x.uid),x);delete u.tombstones[name][String(x.uid)]}for(const key of deleted){const old=byUid.get(key);if(old)d.revisions.push({kind:`${name}-delete`,uid:key,userId:user.id,date:updatedAt,before:old});byUid.delete(key);u.tombstones[name][key]=updatedAt}snap[name]=[...byUid.values()]}u.snapshot={...snap,version:9};u.snapshotUpdatedAt=updatedAt;d.revisions=d.revisions.slice(-5000);await writeDB(d)});return send(res,200,{ok:true,updatedAt},headers);
     }
 
@@ -418,7 +419,7 @@ async function handleApi(req,res,url) {
 
     if(url.pathname==='/api/partner-snapshot' && req.method==='GET') {
       if(!user.partnerId || !db.users[user.partnerId]) return send(res,404,{error:'No partner linked.'},headers);
-      const p=db.users[user.partnerId],sharing=p.sharing||{},source=p.snapshot||{version:9,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[]},data={...source,walks:sharing.routes===false?[]:source.walks||[],photos:sharing.photos===false?[]:source.photos||[],voiceNotes:sharing.photos===false?[]:source.voiceNotes||[],landmarks:sharing.landmarks===false?[]:source.landmarks||[],visits:sharing.landmarks===false?[]:source.visits||[],plans:sharing.plans===false?[]:source.plans||[],collections:sharing.plans===false?[]:source.collections||[]};
+      const p=db.users[user.partnerId],sharing=p.sharing||{},source=p.snapshot||{version:9,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[]},data={...source,walks:sharing.routes===false?[]:source.walks||[],photos:sharing.photos===false?[]:source.photos||[],voiceNotes:sharing.photos===false?[]:source.voiceNotes||[],landmarks:sharing.landmarks===false?[]:source.landmarks||[],visits:sharing.landmarks===false?[]:source.visits||[],plans:sharing.plans===false?[]:source.plans||[],collections:sharing.plans===false?[]:source.collections||[],pines:source.pines||[]};
       return send(res,200,{partner:publicUser(p),data,updatedAt:p.snapshotUpdatedAt||0},headers);
     }
 
@@ -447,4 +448,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(e){console.error(e);send(res,500,{error:'Server error'});}
 });
 
-server.listen(PORT,HOST,()=>console.log(`Nights V9.2 running on http://${HOST}:${PORT}`));
+server.listen(PORT,HOST,()=>console.log(`Nights V9.3 running on http://${HOST}:${PORT}`));
