@@ -124,7 +124,7 @@
           </label>
         </div>
       </div>
-      <div class="window-card"><h2>About</h2><p><b>Nights v6</b> — walk/drive memories, partner sync, photos, landmarks, terrain and personalized ETA.</p></div>
+      <div class="window-card"><h2>About</h2><p><b>Nights V9.4</b> — shared Houses and photo Trees, dependable landmark search, independent categories, route-ready address markers, selectable ETA networks, and resilient partner sync.</p></div>
     </section>
 
   </main>
@@ -132,7 +132,7 @@
   <div id="landmarkModal" class="modal hidden"><div class="dialog wide"><button class="modal-close" data-close="landmarkModal">×</button><h2 id="lmTitle">Add landmark</h2><form id="lmForm">
     <div class="form-grid"><label>Name<input id="lmName" required maxlength="60"></label><label>Category<input id="lmCategory" maxlength="40" list="categoryOptions" placeholder="Park"></label></div><div class="form-grid"><label>Subcategory<input id="lmSubcategory" maxlength="40" list="subcategoryOptions" placeholder="Trail, cafe, bridge..."></label><div></div></div>
     <datalist id="categoryOptions"><option value="Park"><option value="Food"><option value="Viewpoint"><option value="Store"><option value="Hangout"><option value="Nature"><option value="Street"><option value="Memory"><option value="Other"></datalist><datalist id="subcategoryOptions"><option value="Trail"><option value="Cafe"><option value="Restaurant"><option value="Bridge"><option value="Lookout"><option value="Bench"><option value="Shop"><option value="Historic"><option value="Water"><option value="Other"></datalist>
-    <div class="form-grid"><label>Rating<select id="lmRating"><option value="0">Not rated</option><option value="1">★☆☆☆☆</option><option value="2">★★☆☆☆</option><option value="3">★★★☆☆</option><option value="4">★★★★☆</option><option value="5">★★★★★</option></select></label><label>Detection radius<select id="lmRadius"><option value="15">15 m</option><option value="25">25 m</option><option value="50" selected>50 m</option><option value="100">100 m</option><option value="200">200 m</option><option value="500">500 m</option></select></label></div>
+<div class="form-grid"><label>Rating<select id="lmRating"><option value="0">Not rated</option><option value="1">★☆☆☆☆</option><option value="2">★★☆☆☆</option><option value="3">★★★☆☆</option><option value="4">★★★★☆</option><option value="5">★★★★★</option></select></label><label>Detection radius (feet)<input id="lmRadius" type="number" inputmode="numeric" min="1" max="100000" step="1" value="164" required placeholder="Enter feet"></label></div>
     <label>Description<textarea id="lmDesc" maxlength="500" placeholder="What is this place?"></textarea></label><label>Your notes<textarea id="lmNotes" maxlength="1200" placeholder="Memories, details, things to remember..."></textarea></label>
     <input type="hidden" id="lmLat"><input type="hidden" id="lmLon"><input type="hidden" id="lmId">
     <div class="photo-block"><div class="label-title">Photos</div><div id="photoGallery" class="photo-grid"></div><div class="camera-actions"><button id="lmTakePhoto" type="button">📷 TAKE PHOTO</button><button id="lmChoosePhoto" type="button">▣ GALLERY</button></div><input id="lmPhotos" class="hidden-file" type="file" accept="image/*" capture="environment" multiple><input id="lmGalleryInput" class="hidden-file" type="file" accept="image/*" multiple></div>
@@ -142,6 +142,13 @@
   <div id="walkModal" class="modal hidden"><div class="dialog walk-dialog"><button class="modal-close" data-close="walkModal">×</button><h2 id="walkModalTitle">Activity</h2><div id="walkMeta" class="muted"></div><div id="walkVisitSummary" class="memory-detail"></div><div id="walkMap"></div><div class="window-card"><h2>Photos from this activity</h2><div id="walkPhotoGallery" class="photo-grid activity-photo-grid"></div></div></div></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="nights-quality.js"></script>
+  <script src="enhancements.js"></script>
   <script src="app.js"></script>
+  <script src="enhancements-v82.js"></script>
+  <script src="enhancements-v9.js"></script>
+  <script src="enhancements-v91.js"></script>
+  <script src="enhancements-v92.js"></script>
+  <script src="enhancements-v94.js"></script>
 </body>
 </html>

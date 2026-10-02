@@ -1,0 +1,5 @@
+const TILE_CACHE='nights-offline-tiles-v2';
+const TILE_HOSTS=new Set(['a.tile.openstreetmap.org','b.tile.openstreetmap.org','c.tile.openstreetmap.org','a.basemaps.cartocdn.com','b.basemaps.cartocdn.com','c.basemaps.cartocdn.com','d.basemaps.cartocdn.com','a.tile.opentopomap.org','b.tile.opentopomap.org','c.tile.opentopomap.org','server.arcgisonline.com']);
+self.addEventListener('install',event=>event.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+self.addEventListener('fetch',event=>{if(event.request.method!=='GET'||!TILE_HOSTS.has(new URL(event.request.url).hostname))return;event.respondWith((async()=>{const key=new Request(event.request.url,{mode:'no-cors'}),cached=await caches.match(key,{ignoreVary:true});if(cached)return cached;try{const response=await fetch(event.request);if(response.ok||response.type==='opaque')try{const cache=await caches.open(TILE_CACHE);await cache.put(key,response.clone())}catch{}return response}catch{return new Response('',{status:504,statusText:'Offline tile unavailable'})}})())});

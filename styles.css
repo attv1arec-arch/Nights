@@ -9,6 +9,7 @@
 .sync-activity-box{margin-top:12px;padding:10px;border:2px inset #bbb;background:#ddd;color:#111;text-align:left}
 .checkline{display:flex;gap:8px;align-items:center}.checkline input{width:auto;margin:0}
 body.compact-ui main{padding:6px}body.compact-ui .window-card{padding:7px;margin:6px 0}body.compact-ui .panel-title{margin-bottom:6px;padding:6px 8px}
+.native-app body{padding-top:max(24px,env(safe-area-inset-top));padding-bottom:env(safe-area-inset-bottom)}
 .photo-map-marker{font-size:18px;background:#161616;border:2px solid #ffd44d;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;box-shadow:0 2px 6px #000}
 .shared-live{background:#113b11!important}
 
