@@ -46,7 +46,7 @@ function apiHeaders() {
 }
 function normalizeDB(raw) {
   const db = raw && typeof raw === 'object' ? raw : {};
-  db.version = 9;
+  db.version = 10;
   db.users ||= {};
   db.sessions ||= {};
   db.activeActivities ||= {};
@@ -183,7 +183,7 @@ async function handleApi(req,res,url) {
   if(req.method==='OPTIONS'){res.writeHead(204,headers);res.end();return;}
 
   try {
-    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.3',time:Date.now()},headers);
+    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.4',time:Date.now()},headers);
     if(url.pathname==='/api/auth/signup' && req.method==='POST') {
       const body=await readJson(req);
       const username=normalizeUsername(body.username), password=String(body.password||''), displayName=String(body.displayName||'').trim().slice(0,40), walkColor=safeColor(body.walkColor);
@@ -194,7 +194,7 @@ async function handleApi(req,res,url) {
         const db=await readDB();
         if(findUserByName(db,username)) throw Object.assign(new Error('That username is already taken.'),{status:409});
         const id=crypto.randomUUID(), salt=randomToken(18);
-        const user={id,username,displayName:displayName||username,walkColor,salt,passwordHash:await passwordHash(password,salt),inviteCode:freshInviteCode(),partnerId:null,createdAt:Date.now(),snapshot:{version:9,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[]},snapshotUpdatedAt:0};
+        const user={id,username,displayName:displayName||username,walkColor,salt,passwordHash:await passwordHash(password,salt),inviteCode:freshInviteCode(),partnerId:null,createdAt:Date.now(),snapshot:{version:10,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[]},snapshotUpdatedAt:0};
         db.users[id]=user; const token=makeSession(db,id); await writeDB(db); result={token,user:publicUser(user,true)};
       });
       return send(res,201,result,headers);
@@ -382,7 +382,7 @@ async function handleApi(req,res,url) {
     }
 
     if(url.pathname==='/api/snapshot' && req.method==='GET') {
-      return send(res,200,{data:user.snapshot||{version:9,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[]},tombstones:user.tombstones||{},updatedAt:user.snapshotUpdatedAt||0},headers);
+      return send(res,200,{data:user.snapshot||{version:10,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[]},tombstones:user.tombstones||{},updatedAt:user.snapshotUpdatedAt||0},headers);
     }
     if(url.pathname==='/api/snapshot' && req.method==='POST') {
       const body=await readJson(req); const snap=sanitizeSnapshot(body.data); const updatedAt=Date.now();
