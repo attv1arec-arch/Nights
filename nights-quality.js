@@ -14,7 +14,11 @@ function nightsQualitySegments(points, mode='walk') {
     if(seconds<=0||seconds>maxGap){stats.rejected++;stats.gaps++;anchor=p;continue}
     if(!Number.isFinite(distance)||speed>maxSpeed||distance>(driving?1600:240)){stats.rejected++;stats.jumps++;anchor=null;continue}
     const sensorStopped=p.speed!=null&&Number.isFinite(+p.speed)&&+p.speed>=0&&+p.speed<.2;
-    if(distance<Math.max(driving?5:4,Math.max(+anchor.accuracy,+p.accuracy)*.2)||speed<(driving?.45:.2)||sensorStopped){stats.stationary++;stats.rejected++;if(sensorStopped)anchor=p;continue}
+    /* Move the timing anchor while the person is standing around. This keeps a
+       long pause out of the next real movement segment without deleting any of
+       the original saved GPS samples. */
+    const slow=speed<(driving?.45:.2),tooClose=distance<Math.max(driving?5:4,Math.max(+anchor.accuracy,+p.accuracy)*.2);
+    if(tooClose||slow||sensorStopped){stats.stationary++;stats.rejected++;if(slow||sensorStopped)anchor=p;continue}
     let grade=null;
     const goodAltitude=x=>x.altitude!=null&&Number.isFinite(+x.altitude)&&(x.altitudeAccuracy==null||(Number.isFinite(+x.altitudeAccuracy)&&+x.altitudeAccuracy>0&&+x.altitudeAccuracy<=15));
     if(distance>=12&&goodAltitude(anchor)&&goodAltitude(p)){

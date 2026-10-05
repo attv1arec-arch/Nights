@@ -7,11 +7,13 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>body.v95-booting>.topbar,body.v95-booting>.tabs,body.v95-booting>main{visibility:hidden}#v95Boot{position:fixed;inset:0;z-index:999999;background:linear-gradient(#130006,#31000e);color:#fff;display:grid;place-content:center;text-align:center;font:900 28px Tahoma,Arial;letter-spacing:2px}#v95Boot small{font-size:13px;letter-spacing:0;color:#ddd;margin-top:10px}</style>
   <title>Nights</title>
 </head>
-<body>
+<body class="v95-booting">
+  <div id="v95Boot">NIGHTS V9.5.0<small>Opening your saved maps…</small></div>
   <header class="topbar">
-    <div class="brand"><span class="orb">●</span><span>NIGHTS</span><small>V6</small></div>
+    <div class="brand"><span class="orb">●</span><span>NIGHTS</span><small>V9.5.0</small></div>
     <div id="accountBadge" class="account-badge">OFFLINE MODE</div>
   </header>
   <nav class="tabs">
@@ -124,7 +126,7 @@
           </label>
         </div>
       </div>
-      <div class="window-card"><h2>About</h2><p><b>Nights V9.4.2</b> — reliable House saving, visible radiuses, easy house moving, address-aware planning, shared Houses and photo Trees, and resilient partner sync.</p></div>
+      <div class="window-card"><h2>About</h2><p><b>Nights V9.5.0</b> — exact MP logs, durable offline partner data, radius-aware visits and ETA, endpoint-only learned-network joins, and consent-based street fallback.</p></div>
     </section>
 
   </main>
@@ -150,5 +152,6 @@
   <script src="enhancements-v91.js"></script>
   <script src="enhancements-v92.js"></script>
   <script src="enhancements-v94.js"></script>
+  <script src="enhancements-v95.js"></script>
 </body>
 </html>

@@ -46,7 +46,7 @@ function apiHeaders() {
 }
 function normalizeDB(raw) {
   const db = raw && typeof raw === 'object' ? raw : {};
-  db.version = 10;
+  db.version = 11;
   db.users ||= {};
   db.sessions ||= {};
   db.activeActivities ||= {};
@@ -114,8 +114,9 @@ function sanitizeSnapshot(data) {
   const voiceNotes = Array.isArray(data.voiceNotes) ? data.voiceNotes : [];
   const pines = Array.isArray(data.pines) ? data.pines : [];
   const houses = Array.isArray(data.houses) ? data.houses : [];
-  if (walks.length > 25000 || landmarks.length > 12000 || visits.length > 120000 || photos.length > 40000 || plans.length > 2000 || collections.length > 2000 || voiceNotes.length > 10000 || pines.length > 50000 || houses.length > 50000) throw Object.assign(new Error('Dataset too large'),{status:400});
-  return {version:10,walks,landmarks,visits,photos,plans,collections,voiceNotes,pines,houses};
+  const scriptLogs = Array.isArray(data.scriptLogs) ? data.scriptLogs : [];
+  if (walks.length > 25000 || landmarks.length > 12000 || visits.length > 120000 || photos.length > 40000 || plans.length > 2000 || collections.length > 2000 || voiceNotes.length > 10000 || pines.length > 50000 || houses.length > 50000 || scriptLogs.length > 100000) throw Object.assign(new Error('Dataset too large'),{status:400});
+  return {version:11,walks,landmarks,visits,photos,plans,collections,voiceNotes,pines,houses,scriptLogs};
 }
 function sanitizePartnerLandmark(data,existing) {
   if (!data || typeof data !== 'object' || !existing) throw Object.assign(new Error('Invalid landmark.'),{status:400});
@@ -183,7 +184,7 @@ async function handleApi(req,res,url) {
   if(req.method==='OPTIONS'){res.writeHead(204,headers);res.end();return;}
 
   try {
-    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.4.2',time:Date.now()},headers);
+    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.5.0',time:Date.now()},headers);
     if(url.pathname==='/api/auth/signup' && req.method==='POST') {
       const body=await readJson(req);
       const username=normalizeUsername(body.username), password=String(body.password||''), displayName=String(body.displayName||'').trim().slice(0,40), walkColor=safeColor(body.walkColor);
@@ -194,7 +195,7 @@ async function handleApi(req,res,url) {
         const db=await readDB();
         if(findUserByName(db,username)) throw Object.assign(new Error('That username is already taken.'),{status:409});
         const id=crypto.randomUUID(), salt=randomToken(18);
-        const user={id,username,displayName:displayName||username,walkColor,salt,passwordHash:await passwordHash(password,salt),inviteCode:freshInviteCode(),partnerId:null,createdAt:Date.now(),snapshot:{version:10,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[]},snapshotUpdatedAt:0};
+        const user={id,username,displayName:displayName||username,walkColor,salt,passwordHash:await passwordHash(password,salt),inviteCode:freshInviteCode(),partnerId:null,createdAt:Date.now(),snapshot:{version:11,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[],scriptLogs:[]},snapshotUpdatedAt:0};
         db.users[id]=user; const token=makeSession(db,id); await writeDB(db); result={token,user:publicUser(user,true)};
       });
       return send(res,201,result,headers);
@@ -228,6 +229,21 @@ async function handleApi(req,res,url) {
 
     const db=await readDB(); const user=authUser(db,req);
     if(!user) return send(res,401,{error:'Please sign in.'},headers);
+
+    /* Called only after the app's one-time street-routing consent. Account
+       details never leave Nights; only the two requested coordinates do. */
+    if(url.pathname==='/api/route/street' && req.method==='POST'){
+      const body=await readJson(req),costing=body.mode==='drive'?'auto':'pedestrian';
+      const point=value=>{const lat=Number(value?.lat),lon=Number(value?.lon);if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)throw Object.assign(new Error('Invalid route coordinate.'),{status:400});return{lat,lon}};
+      const start=point(body.start),end=point(body.end),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),15000);
+      try{
+        const response=await fetch('https://valhalla1.openstreetmap.de/route',{method:'POST',headers:{'content-type':'application/json','x-client-id':'nights-app'},body:JSON.stringify({locations:[start,end],costing,units:'kilometers',directions_options:{units:'kilometers'},shape_format:'geojson'}),signal:controller.signal});
+        if(!response.ok)throw Object.assign(new Error(`Street routing unavailable (${response.status}).`),{status:502});
+        const data=await response.json(),legs=Array.isArray(data.trip?.legs)?data.trip.legs:[],coordinates=legs.flatMap(leg=>Array.isArray(leg.shape?.coordinates)?leg.shape.coordinates:[]),points=coordinates.map(c=>({lat:Number(c[1]),lon:Number(c[0])})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+        if(points.length<2)throw Object.assign(new Error('Street routing returned no usable route.'),{status:502});
+        return send(res,200,{mode:body.mode==='drive'?'drive':'walk',points,distanceMeters:Number(data.trip?.summary?.length||0)*1000,seconds:Number(data.trip?.summary?.time||0),source:'OpenStreetMap/Valhalla'},headers);
+      }finally{clearTimeout(timeout)}
+    }
 
     if(url.pathname==='/api/me' && req.method==='GET') {
       const partner=user.partnerId?db.users[user.partnerId]:null;
@@ -377,12 +393,12 @@ async function handleApi(req,res,url) {
     }
 
     if(url.pathname==='/api/sync/delta' && req.method==='POST'){
-      const body=await readJson(req),allowed=['walks','landmarks','visits','photos','plans','collections','voiceNotes','pines','houses'],updatedAt=Date.now();
-      await queuedWrite(async()=>{const d=await readDB(),u=d.users[user.id],snap=sanitizeSnapshot(u.snapshot||{});u.tombstones||={};for(const name of allowed){const rows=[...(snap[name]||[])],incoming=Array.isArray(body.changes?.[name])?body.changes[name]:[],deleted=new Set(Array.isArray(body.deleted?.[name])?body.deleted[name].map(String):[]),byUid=new Map(rows.map(x=>[String(x.uid||''),x]));u.tombstones[name]||={};for(const x of incoming){if(!x||!x.uid)continue;const old=byUid.get(String(x.uid));if(!old||Number(x.updatedAt||0)>=Number(old.updatedAt||0))byUid.set(String(x.uid),x);delete u.tombstones[name][String(x.uid)]}for(const key of deleted){const old=byUid.get(key);if(old)d.revisions.push({kind:`${name}-delete`,uid:key,userId:user.id,date:updatedAt,before:old});byUid.delete(key);u.tombstones[name][key]=updatedAt}snap[name]=[...byUid.values()]}u.snapshot={...snap,version:10};u.snapshotUpdatedAt=updatedAt;d.revisions=d.revisions.slice(-5000);await writeDB(d)});return send(res,200,{ok:true,updatedAt},headers);
+      const body=await readJson(req),allowed=['walks','landmarks','visits','photos','plans','collections','voiceNotes','pines','houses','scriptLogs'],updatedAt=Date.now();
+      await queuedWrite(async()=>{const d=await readDB(),u=d.users[user.id],snap=sanitizeSnapshot(u.snapshot||{});u.tombstones||={};for(const name of allowed){const rows=[...(snap[name]||[])],incoming=Array.isArray(body.changes?.[name])?body.changes[name]:[],deleted=new Set(Array.isArray(body.deleted?.[name])?body.deleted[name].map(String):[]),byUid=new Map(rows.map(x=>[String(x.uid||''),x]));u.tombstones[name]||={};for(const x of incoming){if(!x||!x.uid)continue;const old=byUid.get(String(x.uid));if(!old||Number(x.updatedAt||0)>=Number(old.updatedAt||0))byUid.set(String(x.uid),x);delete u.tombstones[name][String(x.uid)]}for(const key of deleted){const old=byUid.get(key);if(old)d.revisions.push({kind:`${name}-delete`,uid:key,userId:user.id,date:updatedAt,before:old});byUid.delete(key);u.tombstones[name][key]=updatedAt}snap[name]=[...byUid.values()]}u.snapshot={...snap,version:11};u.snapshotUpdatedAt=updatedAt;d.revisions=d.revisions.slice(-5000);await writeDB(d)});return send(res,200,{ok:true,updatedAt},headers);
     }
 
     if(url.pathname==='/api/snapshot' && req.method==='GET') {
-      return send(res,200,{data:user.snapshot||{version:10,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[]},tombstones:user.tombstones||{},updatedAt:user.snapshotUpdatedAt||0},headers);
+      return send(res,200,{data:user.snapshot||{version:11,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[],scriptLogs:[]},tombstones:user.tombstones||{},updatedAt:user.snapshotUpdatedAt||0},headers);
     }
     if(url.pathname==='/api/snapshot' && req.method==='POST') {
       const body=await readJson(req); const snap=sanitizeSnapshot(body.data); const updatedAt=Date.now();
@@ -420,7 +436,7 @@ async function handleApi(req,res,url) {
 
     if(url.pathname==='/api/partner-snapshot' && req.method==='GET') {
       if(!user.partnerId || !db.users[user.partnerId]) return send(res,404,{error:'No partner linked.'},headers);
-      const p=db.users[user.partnerId],sharing=p.sharing||{},source=p.snapshot||{version:10,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[]},data={...source,walks:sharing.routes===false?[]:source.walks||[],photos:sharing.photos===false?[]:source.photos||[],voiceNotes:sharing.photos===false?[]:source.voiceNotes||[],landmarks:sharing.landmarks===false?[]:source.landmarks||[],visits:sharing.landmarks===false?[]:source.visits||[],plans:sharing.plans===false?[]:source.plans||[],collections:sharing.plans===false?[]:source.collections||[],pines:source.pines||[],houses:(source.houses||[]).filter(h=>h.shared!==false)};
+      const p=db.users[user.partnerId],sharing=p.sharing||{},source=p.snapshot||{version:11,walks:[],landmarks:[],visits:[],photos:[],plans:[],collections:[],voiceNotes:[],pines:[],houses:[],scriptLogs:[]},data={...source,walks:sharing.routes===false?[]:source.walks||[],photos:sharing.photos===false?[]:source.photos||[],voiceNotes:sharing.photos===false?[]:source.voiceNotes||[],landmarks:sharing.landmarks===false?[]:source.landmarks||[],visits:sharing.landmarks===false?[]:source.visits||[],plans:sharing.plans===false?[]:source.plans||[],collections:sharing.plans===false?[]:source.collections||[],pines:source.pines||[],houses:(source.houses||[]).filter(h=>h.shared!==false),scriptLogs:[]};
       return send(res,200,{partner:publicUser(p),data,updatedAt:p.snapshotUpdatedAt||0},headers);
     }
 
@@ -449,4 +465,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(e){console.error(e);send(res,500,{error:'Server error'});}
 });
 
-server.listen(PORT,HOST,()=>console.log(`Nights V9.3 running on http://${HOST}:${PORT}`));
+server.listen(PORT,HOST,()=>console.log(`Nights V9.5.0 running on http://${HOST}:${PORT}`));
