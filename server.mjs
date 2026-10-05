@@ -141,6 +141,7 @@ function sanitizePartnerLandmark(data,existing) {
   };
 }
 function snapshotDistance(a,b){const rad=Math.PI/180,dLat=(Number(b.lat)-Number(a.lat))*rad,dLon=(Number(b.lon)-Number(a.lon))*rad,q=Math.sin(dLat/2)**2+Math.cos(Number(a.lat)*rad)*Math.cos(Number(b.lat)*rad)*Math.sin(dLon/2)**2;return 12742000*Math.asin(Math.sqrt(q))}
+function decodeValhallaShape(encoded,precision=6){const result=[],factor=10**precision;let index=0,lat=0,lon=0;while(index<encoded.length){let value=0,shift=0,byte;do{byte=encoded.charCodeAt(index++)-63;value|=(byte&31)<<shift;shift+=5}while(byte>=32&&index<=encoded.length);lat+=(value&1)?~(value>>1):(value>>1);value=0;shift=0;do{byte=encoded.charCodeAt(index++)-63;value|=(byte&31)<<shift;shift+=5}while(byte>=32&&index<=encoded.length);lon+=(value&1)?~(value>>1):(value>>1);result.push([lon/factor,lat/factor])}return result}
 function recalculateSnapshotLandmarkVisits(snapshot,landmark){
   const visits=Array.isArray(snapshot.visits)?snapshot.visits:[],existing=visits.filter(v=>v?.landmarkUid===landmark.uid),byWalk=new Map(existing.filter(v=>v.walkUid).map(v=>[v.walkUid,v])),kept=visits.filter(v=>v?.landmarkUid!==landmark.uid||!v.walkUid),added=[];
   for(const walk of snapshot.walks||[]){let closest=null,best=Infinity;for(const point of walk.points||[]){const d=snapshotDistance(point,landmark);if(d<best){best=d;closest=point}}if(best<=Number(landmark.radius||50)){const old=byWalk.get(walk.uid);added.push(old||{uid:crypto.randomUUID(),landmarkUid:landmark.uid,walkUid:walk.uid,date:Number(closest?.t||walk.date||Date.now()),updatedAt:Date.now(),radiusCalculated:true})}}
@@ -239,7 +240,7 @@ async function handleApi(req,res,url) {
       try{
         const response=await fetch('https://valhalla1.openstreetmap.de/route',{method:'POST',headers:{'content-type':'application/json','x-client-id':'nights-app'},body:JSON.stringify({locations:[start,end],costing,units:'kilometers',directions_options:{units:'kilometers'},shape_format:'geojson'}),signal:controller.signal});
         if(!response.ok)throw Object.assign(new Error(`Street routing unavailable (${response.status}).`),{status:502});
-        const data=await response.json(),legs=Array.isArray(data.trip?.legs)?data.trip.legs:[],coordinates=legs.flatMap(leg=>Array.isArray(leg.shape?.coordinates)?leg.shape.coordinates:[]),points=coordinates.map(c=>({lat:Number(c[1]),lon:Number(c[0])})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+        const data=await response.json(),legs=Array.isArray(data.trip?.legs)?data.trip.legs:[],coordinates=legs.flatMap(leg=>Array.isArray(leg.shape?.coordinates)?leg.shape.coordinates:typeof leg.shape==='string'?decodeValhallaShape(leg.shape):[]),points=coordinates.map(c=>({lat:Number(c[1]),lon:Number(c[0])})).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
         if(points.length<2)throw Object.assign(new Error('Street routing returned no usable route.'),{status:502});
         return send(res,200,{mode:body.mode==='drive'?'drive':'walk',points,distanceMeters:Number(data.trip?.summary?.length||0)*1000,seconds:Number(data.trip?.summary?.time||0),source:'OpenStreetMap/Valhalla'},headers);
       }finally{clearTimeout(timeout)}
