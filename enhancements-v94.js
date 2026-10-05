@@ -99,4 +99,9 @@ function v941InstallHouseMapTools(){
 }
 function v941HousePopupActions(activeMap,marker,house,onMainMap){const content=marker.getPopup()?.getElement()?.querySelector('.leaflet-popup-content');if(!content||content.querySelector('.v941-house-actions'))return;const actions=document.createElement('div');actions.className='v91-popup-actions v941-house-actions';if(house._owner!=='partner'){const edit=document.createElement('button');edit.textContent='Edit / move';edit.onclick=()=>{activeMap.closePopup();v94OpenHouse({...house})};actions.append(edit)}if(!onMainMap){const route=document.createElement('button');route.textContent='Add to route';route.onclick=()=>{activeMap.closePopup();v9AddStop({...house,_type:'house'});showPage('plan')};actions.append(route)}content.append(actions)}
 
-window.addEventListener('nights-ready',()=>{const wait=()=>v94Init().then(ok=>{if(!ok)setTimeout(wait,100)}).catch(e=>{v94Ready=false;console.error('V9.4 startup:',e);setTimeout(wait,250)});setTimeout(wait,80)});
+function v94Start(){const wait=()=>v94Init().then(ok=>{if(!ok)setTimeout(wait,100)}).catch(e=>{v94Ready=false;console.error('V9.4 startup:',e);setTimeout(wait,250)});setTimeout(wait,80)}
+window.addEventListener('nights-ready',v94Start);
+// A fast IndexedDB open can dispatch nights-ready before this late enhancement
+// script has registered its listener. Start a second idempotent readiness loop so
+// the current interface is never left waiting behind the boot screen.
+v94Start();

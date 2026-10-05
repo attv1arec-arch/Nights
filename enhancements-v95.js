@@ -24,7 +24,8 @@ async function v95StreetLeg(model,start,end,preference,unavailable){
 async function v95RefreshLandmark(saved){if(!saved)return;await v9RecalculateOwnVisits(saved);v9RouteModels={walk:null,drive:null};await v9BuildAllModels();v9ScheduleRoute();await renderLists();await renderMap()}
 
 async function v95Init(){
-  if(v95Ready||typeof v94Ready==='undefined'||!v94Ready||typeof v9Started==='undefined'||!v9Started)return false;v95Ready=true;v95Styles();document.querySelector('.brand small').textContent='V9.5.0';
+  if(v95Ready)return true;
+  if(typeof v94Ready==='undefined'||!v94Ready||typeof v9Started==='undefined'||!v9Started)return false;v95Ready=true;v95Styles();document.querySelector('.brand small').textContent='V9.5.0';
   $('mapbox')?.insertAdjacentHTML('beforebegin','<div class="button-row"><button id="v95LogMp" class="v95-mp-button">LOG MP</button></div>');$('v95LogMp').onclick=v95LogMp;
   const baseMap=renderMap;renderMap=async function(){await baseMap();await v95DrawMp()};
   const baseCard=landmarkCard;landmarkCard=function(l,visits,isPartner=false){const html=baseCard(l,visits,isPartner);if(isPartner)return html;const count=v95MpCount(l);return html.replace('</small>',` · <span class="v95-mp-card-count">${count} MP log${count===1?'':'s'}</span></small>`)};
@@ -35,4 +36,8 @@ async function v95Init(){
   await v95DrawMp();await renderLists();document.body.classList.remove('v95-booting');$('v95Boot')?.remove();return true
 }
 
-window.addEventListener('nights-ready',()=>{const attempt=()=>v95Init().then(ok=>{if(!ok)setTimeout(attempt,100)});attempt()});
+function v95Start(){const attempt=()=>v95Init().then(ok=>{if(!ok)setTimeout(attempt,100)}).catch(e=>{v95Ready=false;console.error('V9.5 startup:',e);setTimeout(attempt,250)});attempt()}
+window.addEventListener('nights-ready',v95Start);
+// Do not rely only on nights-ready: it may have fired before this final script
+// is parsed on phones with a warm local database.
+v95Start();
