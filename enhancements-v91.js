@@ -187,7 +187,7 @@ function v91InstallPlannerState(){
   v9RenderAlternatives=v91RenderAlternatives;
 }
 
-function v91RenderAlternatives(){const labels={fastest:'Fastest',easy:'Easier hills',familiar:'Familiar'};$('v9Alternatives').innerHTML=['fastest','easy','familiar'].map(p=>{const r=v9Alternatives[p];return `<button type="button" class="v9-route-card ${p===v9Preference?'active':''}" data-v91-alt="${p}" aria-pressed="${p===v9Preference}"><b>${labels[p]}</b><strong style="display:block;font-size:17px;color:#1967d2">${r?v9EtaText(r.seconds):'—'}</strong><span>${r?mi(r.distance)+' mi':'Add a stop'}</span></button>`}).join('');$('v9Alternatives').querySelectorAll('[data-v91-alt]').forEach(b=>b.onclick=()=>v9SelectAlternative(b.dataset.v91Alt))}
+function v91RenderAlternatives(){const labels={regular:'Regular',fastest:'Fastest',easy:'Easier hills',familiar:'Familiar'};$('v9Alternatives').innerHTML=['regular','fastest','easy','familiar'].map(p=>{const r=v9Alternatives[p];return `<button type="button" class="v9-route-card ${p===v9Preference?'active':''}" data-v91-alt="${p}" aria-pressed="${p===v9Preference}"><b>${labels[p]}</b><strong style="display:block;font-size:17px;color:#1967d2">${r?v9EtaText(r.seconds):'—'}</strong><span>${r?`${mi(r.distance)} mi · ${Math.round(r.climb*3.28084)} ft up`:'Add a stop'}</span></button>`}).join('');$('v9Alternatives').querySelectorAll('[data-v91-alt]').forEach(b=>b.onclick=()=>v9SelectAlternative(b.dataset.v91Alt))}
 
 async function v91RenderPlanMarkers(){
   if(!v9PlanMap)return;v9PlanMarkerLayer.clearLayers();const chosen=new Set(v9Stops.map(v9ChoiceKey));

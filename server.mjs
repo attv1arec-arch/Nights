@@ -185,7 +185,7 @@ async function handleApi(req,res,url) {
   if(req.method==='OPTIONS'){res.writeHead(204,headers);res.end();return;}
 
   try {
-    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.5.0',time:Date.now()},headers);
+    if(url.pathname==='/api/health' && req.method==='GET')return send(res,200,{ok:true,service:'Nights partner sync',version:'9.5.1',time:Date.now()},headers);
     if(url.pathname==='/api/auth/signup' && req.method==='POST') {
       const body=await readJson(req);
       const username=normalizeUsername(body.username), password=String(body.password||''), displayName=String(body.displayName||'').trim().slice(0,40), walkColor=safeColor(body.walkColor);
@@ -466,4 +466,4 @@ const server=http.createServer(async(req,res)=>{
   }catch(e){console.error(e);send(res,500,{error:'Server error'});}
 });
 
-server.listen(PORT,HOST,()=>console.log(`Nights V9.5.0 running on http://${HOST}:${PORT}`));
+server.listen(PORT,HOST,()=>console.log(`Nights V9.5.1 running on http://${HOST}:${PORT}`));

@@ -1,11 +1,11 @@
 {
   "name": "nights-native",
-  "version": "6.1.0",
+  "version": "9.5.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/sync-shared.mjs && node scripts/build-static.mjs",
     "sync": "npm run build && npx cap sync",
     "android": "npm run sync && npx cap open android",
     "ios": "npm run sync && npx cap open ios"
